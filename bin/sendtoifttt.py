@@ -6,9 +6,7 @@ import requests
 import threading, Queue
 
 _ifttt_server_verify = True
-_max_content_bytes = 100000
-_max_content_records = 1
-_number_of_threads = 5 
+_number_of_threads = 2 
 
 class ifttt:
 
@@ -27,7 +25,8 @@ class ifttt:
     def batchThread(self):
         while True:
             queuedData = self.flushQueue.get()
-            print >> sys.stderr, "INFO ifttt send vendor_action=successful %s" % json.dumps(queuedData)
+
+            # build data payload of the available values from the queuedData
             data = {}
             if 'Value1' in queuedData: data['value1'] = queuedData.get('Value1') 
             if 'Value2' in queuedData: data['value2'] = queuedData.get('Value2')
@@ -38,7 +37,7 @@ class ifttt:
             payload_length = sum(len(json.dumps(item)) for item in data)
             r = requests.post(ifttt_url,verify=_ifttt_server_verify,headers=headers,data=json.dumps(data))
             if not r.status_code == requests.codes.ok:
-                print >> sys.stderr, ("ERROR ifttt post vendor_action=failed %s" % r.text)
+                print >> sys.stderr, ("ERROR ifttt action_type=post vendor_action=failed error_message=%s" % r.text)
             self.flushQueue.task_done()
 
     def waitUntilDone(self):
@@ -80,21 +79,15 @@ if __name__ == "__main__":
         print >> sys.stderr, "FATAL Empty Search Results, nothing to sync."
         sys.exit(1)
     try:
+        # submit each json event result line individually to the queue
         postList = []
         for entry in tableContents:
-            if ((len(json.dumps(postList)) + len(json.dumps(entry))) < _max_content_bytes) and (len(postList) + 1 < _max_content_records):
-                postList.append(entry)
-            else:
-                destIFTTT.postDataToIFTTT(postList)
-                postList = []
-                postList.append(entry)
-
-        destIFTTT.postDataToIFTTT(postList)
+            destIFTTT.postDataToIFTTT(entry)
 
     except Exception, e:
         raise Exception, "%s" % str(e)
 
     destIFTTT.waitUntilDone()
-    print >> sys.stderr, "INFO ifttt send vendor_action=successful count=%s" % len(tableContents)
+    print >> sys.stderr, "INFO ifttt send vendor_action=completed count=%s" % len(tableContents)
 
 
