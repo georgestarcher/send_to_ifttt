@@ -7,7 +7,7 @@ import threading, Queue
 
 _ifttt_server_verify = True
 _max_content_bytes = 100000
-_max_content_records = 1000
+_max_content_records = 1
 _number_of_threads = 5 
 
 class ifttt:
@@ -26,7 +26,7 @@ class ifttt:
         
     def batchThread(self):
         while True:
-            queuedData = self.flushQueue.get()[0]
+            queuedData = self.flushQueue.get()
             print >> sys.stderr, "INFO ifttt send vendor_action=successful %s" % json.dumps(queuedData)
             data = {}
             if 'Value1' in queuedData: data['value1'] = queuedData.get('Value1') 
